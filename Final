@@ -1,0 +1,358 @@
+---
+title: "DASHBOARD"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: cerulean
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(ggplot2)
+library(haven)
+library(survey)
+library(srvyr)
+library(labelled)
+library(formattable)
+load("H:/Downloads/eh21 (1).RData")
+eh21pe_s<-eh21pe %>% as_survey_design(
+  ids = upm,
+  strata =estrato,
+  weights = factor)
+
+##INDICADOR 4
+bddesm<-eh21pe_s %>% filter(s01a_03>=7) %>% select(depto,s01a_03,s04a_01,s04a_02,s04a_03,s04a_04,s04a_05)
+
+numdesempleo <- bddesm %>% filter(as.numeric(s04a_01)== 2) %>% filter(as.numeric(s04a_04)== 1) %>% 
+  filter(as.numeric(s04a_05)== 1)
+
+numlab_depto <- bddesm %>% group_by(depto) %>% summarize(n = n())
+
+numdesp_depto<-numdesempleo %>% group_by(depto) %>% select(s04a_05)%>% summarize(n = n())
+
+baseDesmpleo<- numlab_depto %>% left_join(numdesp_depto %>% select(depto,n), by ="depto")
+baseDesmpleo<- baseDesmpleo %>% rename(n_lab=n.x) %>% rename(n_des=n.y)
+aux1<-baseDesmpleo %>% group_by(depto) %>% summarise(tasa=n_des/n_lab*100)
+baseDesmpleo<-baseDesmpleo %>% left_join(aux1 %>% select(depto,tasa), by ="depto")
+
+datos_departamentos <- data.frame(
+  Codigo = c(1, 2, 3, 4, 5, 6, 7, 8, 9),
+  Departamento = c("Chuquisaca", "La Paz", "Cochabamba", "Oruro", "Potosí", "Tarija", "Santa Cruz", "Beni", "Pando")
+)
+##INDICADOR 5
+#TASA DE DESEMPLEO JUVENIL
+bddesjuvenil<-eh21pe_s %>% filter(s01a_03>=15 & s01a_03<=24) %>% select(depto,s01a_03,s04a_01,s04a_02,s04a_03,s04a_04,s04a_05)
+
+numdesempleoj <- bddesjuvenil %>% filter(as.numeric(s04a_01)== 2) %>% filter(as.numeric(s04a_04)== 1) %>% 
+  filter(as.numeric(s04a_05)== 1)
+
+numlab_deptoj <- bddesjuvenil %>% group_by(depto) %>% summarize(n = n())
+
+numdesp_deptoj<-numdesempleoj %>% group_by(depto) %>% select(s04a_05)%>% summarize(n = n())
+
+baseDesmpleojuv<- numlab_deptoj %>% left_join(numdesp_deptoj %>% select(depto,n), by ="depto")
+baseDesmpleojuv<- baseDesmpleojuv %>% rename(n_lab=n.x) %>% rename(n_des=n.y)
+aux2<-baseDesmpleojuv %>% group_by(depto) %>% summarise(tasa=n_des/n_lab*100)
+baseDesmpleojuv<-baseDesmpleojuv %>% left_join(aux2 %>% select(depto,tasa), by ="depto")
+
+#INDICADOR 6
+#Base de datos de personas en edad de trabajar
+baseET<-eh21pe_s %>% filter(s01a_03>=7) %>% select(depto,s01a_03,s04a_01,s04a_02,s04a_03)
+
+#Base de datos de personas EMPLEADAS
+baseEMP <-baseET %>%filter(as.numeric(s04a_01)==1| as.numeric(s04a_02)!=8 | as.numeric(s04a_03)!=11)
+
+auxlab <- baseET %>% group_by(depto) %>% summarize(n = n())
+
+auxempl <- baseEMP %>% group_by(depto) %>% select(s04a_01)%>% summarize(n = n())
+
+baseEmpleo<- auxlab %>% left_join(auxempl %>% select(depto,n), by ="depto")
+baseEmpleo <- baseEmpleo %>% rename(n_lab=n.x) %>% rename(n_empl=n.y)
+aux3<-baseEmpleo %>% group_by(depto) %>% summarise(ratio=n_empl/n_lab*100)
+baseEmpleo<-baseEmpleo %>% left_join(aux3 %>% select(depto,ratio), by ="depto")
+####
+eh21vi_m1<-eh21vi %>% as_survey_design(
+  ids = upm,
+  strata =estrato,
+  weights = factor)
+#Base de datos de viviendas a trabajar
+eh21vi_m1 %>% select(s07a_16,s07a_17,s07a_26,s07a_27,s07a_28,s07a_29,s07a_30)
+# INDICADOR 1
+auxelec<-eh21vi_m1 %>% filter(as.numeric(s07a_16)==1)
+numviviendas <- eh21vi_m1 %>% summarize(n = n())
+numviv_elec <- auxelec %>% summarize(n = n())
+
+graf_elec <- data.frame(
+  Categoria = c("Con Energía", "Sin Energía"),
+  Valor = c(as.numeric(numviv_elec / numviviendas * 100), as.numeric((1 - (numviv_elec / numviviendas)) * 100)))
+
+# INDICADOR 2
+auxtelf<-eh21vi_m1 %>% filter(as.numeric(s07a_26)==1)
+
+numviv_telf <- auxtelf %>% summarize(n = n())
+
+graf_telf <- data.frame(
+  Categoria = c("Con Telefonía", "Sin Telefonía"),
+  Valor = c(as.numeric(numviv_telf / numviviendas * 100), as.numeric((1 - (numviv_telf / numviviendas)) * 100)))
+
+# INDICADOR 3
+auxint<-eh21vi_m1 %>% filter(as.numeric(s07a_28)==1)
+
+numviv_int <- auxint %>% summarize(n = n())
+
+graf_int <- data.frame(
+  Categoria = c("Con Internet", "Sin internet"),
+  Valor = c(as.numeric(numviv_int / numviviendas * 100), as.numeric((1 - (numviv_int / numviviendas)) * 100)))
+
+# INDICADOR 4
+#eh21vi %>% filter(!is.na(s07a_29)) %>% select(s07a_29) %>% count(s07a_29)
+
+graf_tipoint<- data.frame(
+  TipoConexion = c("Solo fija", "Solo móvil", "Ambas", "No sabe"),
+  Cantidad = c(3662, 2169, 1929, 14))
+
+total <- sum(graf_tipoint$Cantidad)
+
+graf_tipoint <- graf_tipoint %>%
+  mutate(Porcentaje = Cantidad / total * 100)
+# INDICADOR 7
+# Base de Dtaos a Nivel Muestra EH21PE
+eh21pe_m<-eh21pe %>% as_survey_design(
+  ids = upm,
+  strata =estrato,
+  weights = factor)
+
+# Base de Dtaos a Nivel Muestra EH21GNA
+eh21gna_m<-eh21pe %>% as_survey_design(
+  ids = upm,
+  strata =estrato,
+  weights = factor)
+
+## Participación en Programas de Asistencia Social
+BDASOC <- eh21pe_m %>% select(ynolab,s05b_07aa,s05b_07ba)
+BDASOC <- BDASOC %>% mutate(SumaVar = s05b_07aa + s05b_07ba)
+BDASOC <- BDASOC %>% mutate(Resultado = ynolab - SumaVar)
+
+# Convertir el objeto survey.design a data.frame
+BDASOC_df <- as.data.frame(BDASOC)
+
+# Base de Dtaos a Nivel Muestra EH21PE
+eh21pe_m1<-eh21pe %>% as_survey_design(
+  ids = upm,
+  strata =estrato,
+  weights = factor)
+
+# Base de Datos a Nivel Muestra EH21GNA
+eh21gna_m1<-eh21gna %>% as_survey_design(
+  ids = upm,
+  strata =estrato,
+  weights = factor)
+
+BDIE <- eh21pe_m1 %>% filter(aestudio<12 & aestudio>2) %>% select(depto,aestudio) %>% na.omit()
+BDIE1 <- eh21gna_m1 %>% select(depto,s09b_10_11,s09b_10_12,s09b_10_13)%>% na.omit()
+BDIE1 <- BDIE1 %>% mutate(Suma = s09b_10_11+s09b_10_12+s09b_10_13)
+BDIE1 <- as.data.frame(BDIE1)
+BDIE1 <- BDIE1 %>% sample_n(100)
+BDIE <- as.data.frame(BDIE)
+BDIE <- BDIE %>% sample_n(100)
+
+BDIE_joined_survey <- merge(BDIE, BDIE1, by = "depto")
+BDIE_joined_survey <- BDIE_joined_survey %>%
+  mutate(Tasa_s09b_10_11 = s09b_10_11 / Suma,
+         Tasa_s09b_10_12 = s09b_10_12 / Suma,
+         Tasa_s09b_10_13 = s09b_10_13 / Suma)
+# Base de Dtaos a Nivel Muestra EH21PE
+eh21pe_m1<-eh21pe %>% as_survey_design(
+  ids = upm,
+  strata =estrato,
+  weights = factor)
+
+# Base de Datos a Nivel Muestra EH21VI
+eh21vi_m1<-eh21vi %>% as_survey_design(
+  ids = upm,
+  strata =estrato,
+  weights = factor)
+
+BDND <- eh21pe_m1 %>% select(depto,s01a_03) %>% na.omit()
+BDND1 <- eh21vi_m1 %>% select(depto,s07a_04)%>% na.omit()
+BDND <- BDND %>% group_by(s01a_03,depto) %>% summarize(cantidad = n())
+BDND <- as.data.frame(BDND)
+BDND1 <- as.data.frame(BDND1)
+
+BDND1J <- merge(BDND1, BDND, by = "depto")
+BDNDF <- BDND1J %>% mutate(Div = (s07a_04/s01a_03))
+
+
+```
+# Pestaña 1
+Column
+------------------------------
+### INDICADOR 1
+```{r}
+ggplot(graf_elec, aes(x = "", y = Valor, fill = Categoria)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  theme_void() +
+  scale_fill_manual(values = c("#4e79a7", "#a0cbe8")) +
+  labs(title = "Porcentaje de Hogares con Acceso a Energía Eléctrica") +
+  theme(plot.title = element_text(hjust = 2)) +
+  geom_text(aes(label = sprintf("%.1f%%", Valor), y = Valor / 2), color = "black")
+
+```
+
+### INDICADOR 2
+```{r}
+# INDICADOR 2
+ggplot(graf_telf, aes(x = "", y = Valor, fill = Categoria)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  theme_void() +
+  scale_fill_manual(values = c("#4e79a7", "#a0cbe8")) +
+  labs(title = "Porcentaje de Hogares con Telefonía fija") +
+  theme(plot.title = element_text(hjust = 2)) +
+  geom_text(aes(label = sprintf("%.1f%%", Valor), y = Valor / 2), color = "black")
+
+```
+
+
+Column
+------------------------------
+### INDICADOR 3
+```{r}
+# INDICADOR 3
+ggplot(graf_int, aes(x = "", y = Valor, fill = Categoria)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  theme_void() +
+  scale_fill_manual(values = c("#4e79a7", "#a0cbe8")) +
+  labs(title = "Porcentaje de Hogares con Telefonía fija") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_text(aes(label = sprintf("%.1f%%", Valor), y = Valor / 2), color = "black")
+
+```
+
+### INDICADOR 4
+```{r}
+# INDICADOR 4
+ggplot(graf_tipoint, aes(x = "", y = Porcentaje, fill = TipoConexion)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  theme_void() +
+  scale_fill_manual(values = c("#1f77b4", "#4e79a7", "#a0cbe8", "#d0e4f1")) + # Cuatro colores azules definidos aquí
+  labs(title = "Distribución de Tipos de Conexión a Internet") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_label(aes(label = sprintf("%.1f%%", Porcentaje), y = Porcentaje / 2), 
+             position = position_stack(vjust = 0.5))
+
+```
+
+# Pestaña 2 
+
+Column
+------------------------------
+### Codigo por departamento
+```{r}
+formattable(datos_departamentos, 
+            list(
+              Codigo = color_tile("white", "lightblue"),
+              Departamento = formatter("span", style = x ~ ifelse(x == "Pando", style(font.weight = "bold"), NA))
+            ))
+```
+
+### INDICADOR 5
+```{r}
+ggplot(baseDesmpleo, aes(x = factor(depto), y = tasa, fill = factor(depto))) +
+  geom_bar(stat = "identity", color = "black", width = 0.7) +
+  geom_text(aes(label = sprintf("%.2f", tasa), y = tasa), vjust = -0.5) +  # Agregar etiquetas con valores numéricos
+  labs(title = "Tasas de Desempleo por Departamento",
+       x = "Departamento",
+       y = "Tasa de Desempleo (%)") +
+  scale_fill_manual(values = c("#FFFFFF" ,"#F4FAFB", "#EAF5F8", "#E0F0F5", "#D6EBF2", "#CBE6EF", "#C1E1EC", "#B7DCE9","#ADD8E6")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10),
+        legend.position = "none") +
+  scale_y_continuous(limits = c(0, max(baseDesmpleo$tasa) + 1), breaks = seq(0, max(baseDesmpleo$tasa) + 1, 1))
+
+
+```
+
+Column
+------------------------------
+### INDICADOR 6
+```{r}
+ggplot(baseDesmpleojuv, aes(x = factor(depto), y = tasa, fill = factor(depto))) +
+  geom_bar(stat = "identity", color = "black", width = 0.7) +
+  geom_text(aes(label = sprintf("%.2f", tasa), y = tasa), vjust = -0.5) +  # Agregar etiquetas con valores numéricos
+  labs(title = "Tasa de Desempleo Juvenil por Departamento",
+       x = "Departamento",
+       y = "Tasa de Desempleo (%)") +
+  scale_fill_manual(values = c("#FFFFFF" ,"#F4FAFB", "#EAF5F8", "#E0F0F5", "#D6EBF2", "#CBE6EF", "#C1E1EC", "#B7DCE9","#ADD8E6")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10),
+        legend.position = "none") +
+  scale_y_continuous(limits = c(0, max(baseDesmpleojuv$tasa) + 1), breaks = seq(0, max(baseDesmpleojuv$tasa) + 1, 1))
+
+```
+
+### INDICADOR 7
+```{r}
+ggplot(baseEmpleo, aes(x = factor(depto), y = ratio, fill = factor(depto))) +
+  geom_bar(stat = "identity", color = "black", width = 0.7) +
+  geom_text(aes(label = sprintf("%.2f", ratio), y = ifelse(ratio >= 90, ratio - 3, ratio + 3)), vjust = -0.3, color = "black") +  
+  labs(title = "Ratio de Empleo por Departamento",
+       x = "Departamento",
+       y = "Ratio de Empleo (%)") +
+  scale_fill_manual(values = c("#FFFFFF" ,"#F4FAFB", "#EAF5F8", "#E0F0F5", "#D6EBF2", "#CBE6EF", "#C1E1EC", "#B7DCE9","#ADD8E6")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 12, face = "bold"),
+        axis.text = element_text(size = 10),
+        legend.position = "none") +
+  scale_y_continuous(
+    limits = c(0, 70),  # Ajuste de límites para asegurar visibilidad de etiquetas
+    breaks = seq(0, 70, by = 5)  # Intervalos de 5 en 5
+  )
+```
+
+# Pestaña 3 
+Column
+------------------------------
+### INDICADOR 8
+```{r}
+ggplot(BDASOC_df, aes(x = ynolab, y = Resultado)) +
+  geom_point(color = "#ADD8E6") +
+  labs(title = "Relación entre Ingreso No Lab y Asistencia Soc.",
+       x = "Ingreso No Lab.",
+       y = "Asistecia Soc.")
+```
+
+### INDICADOR 9
+```{r}
+ggplot(BDIE_joined_survey, aes(x = "", y = Suma, fill = as.factor(aestudio))) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y") +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "Proporción de Ing. a la educacion x Años de estudio", fill = "Años de estudio")
+
+```
+
+Column
+------------------------------
+### INDICADOR 10
+```{r}
+ggplot(BDNDF, aes(x = factor(s01a_03), y = Div, fill = factor(s01a_03))) +
+  geom_bar(stat = "identity") +
+  labs(title = "Relación Credito - Edad",
+       x = "Edad",
+       y = "Indicador") +
+  theme_minimal()
+```
